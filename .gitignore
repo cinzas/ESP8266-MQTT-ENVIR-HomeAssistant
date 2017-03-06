@@ -1,6 +1,5 @@
 # Personal details
-src/auth.h
-web/feed_details.js
+power-monitor/auth.h
 
 # Binaries, etc
 junk/*

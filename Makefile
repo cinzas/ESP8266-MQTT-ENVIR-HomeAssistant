@@ -13,7 +13,7 @@ upload:
 	ino upload
 
 burn:
-	sudo avrdude -c usbtiny -p m328p -b 57600 -U flash:w:.build/pro328/firmware.hex:i -U efuse:w:0x05:m -U hfuse:w:0xde:m -U lfuse:w:0xff:m
+	avrdude -c usbtiny -p m328p -b 57600 -U flash:w:hardware\arduino\avr\bootloaders\atmega\ATmegaBOOT_168_atmega328_pro_8MHz.hex:i -U efuse:w:0x05:m -U hfuse:w:0xde:m -U lfuse:w:0xff:m
 
 clean:
 	ino clean
