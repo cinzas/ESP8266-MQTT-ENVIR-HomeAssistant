@@ -1,5 +1,9 @@
+#define VERSION "v6.1 - EnergyProxy - http://dotnetdan.info"
+
+#include <SPI.h> //http://playground.arduino.cc/Code/Spi
 #include <Ethernet.h>
-#include <SPI.h>
+#include <EthernetUdp.h>
+#include <TimeLib.h> //http://playground.arduino.cc/Code/time
 
 #include "auth.h"
 
@@ -22,7 +26,8 @@ SoftwareSerial ccSerial(SERIAL_RX, SERIAL_TX);
 
 /* The size of the buffer that messages are read onto */
 /* (should fit a whole message) */
-#define BUFFER_SIZE 512
+/* 166-288 (One is 332 and history ones are larger) */
+#define BUFFER_SIZE 350
 
 /* Max time to wait between bits of a message (milliseconds) */
 #define MSG_DELAY 400
@@ -30,12 +35,17 @@ SoftwareSerial ccSerial(SERIAL_RX, SERIAL_TX);
 /* ~~~~~~~~~~~~~~~~ */
 /* Global Variables */
 /* ~~~~~~~~~~~~~~~~ */
+int    lastHour;
+time_t dateStarted;
+time_t dateFailed;
 
 /* Networking details (add your ethernet shield's MAC address) */
 byte mac[] = {0x90, 0xA2, 0xDA, 0x02, 0x03, 0xC5};
 byte ip[] = {192, 168, 30, 200};
 byte gateway[] = {192, 168, 30, 1};
 EthernetClient client;
+EthernetServer server(80);              // the web server is used to serve status calls
+EthernetUDP Udp;
 
 /* Message buffer & its counter */
 char buffer[BUFFER_SIZE];
@@ -66,6 +76,8 @@ int failed_connections = 0;
 /* All the real work is in the xml processor */
 #include "resultproc.h"
 #include "xmlproc.h"
+#include "ntp-time.h"
+#include "web-client.h"
 
 void setup()
 {
@@ -93,9 +105,51 @@ void setup()
   Ethernet.maintain();
   DEBUG_PRINT(F("Local IP: "));
   DEBUG_PRINTLN(Ethernet.localIP());
+  
+  // initialize time server
+  Udp.begin(8888);
+  DEBUG_PRINTLN(F("Setting time using NTP"));
+  while(!UpdateTime()); // wait until time is set
+  DEBUG_PRINTLN(F("Time is set"));
+  
+  lastHour = hour();
+  dateStarted = now();
+  dateFailed = now();
 }
 
+
 void loop()
+{
+  /* Read and send data */
+  ReadMeter();
+  
+  /* Reconnect to the network if neccessary */
+  if (failed_connections > 3) {
+    DEBUG_PRINT(F("Failed Connections - Reset"));
+    failed_connections = 0;
+    client.stop();
+
+    if (Ethernet.begin(mac) == 0) {
+      DEBUG_PRINTLN(F("DHCP failed!"));
+      Ethernet.begin(mac, ip, gateway, gateway);
+    }
+  }
+
+  /* Update local time/date */
+  if(hour()!=lastHour) {
+    lastHour=hour();
+    if(lastHour==10 || lastHour==22) {
+      UpdateTime();
+    }
+  }
+
+  /* Server Webpage */
+  ServeWebClients();
+  delay(50);
+}
+
+
+void ReadMeter()
 {
   /*
      The incoming message appears on the SoftwareSerial buffer
@@ -110,7 +164,7 @@ void loop()
       {
         if (i == BUFFER_SIZE) {
           overflowed = true;
-          DEBUG_PRINTLN(F("Buffer Overflowed"));
+          DEBUG_PRINT(F("x"));
           break;
         }
 
@@ -129,8 +183,9 @@ void loop()
   CC_SERIAL.flush(); // Clear any remaining serial?
 
   /* If the buffer hasn't overflowed, process the message */
-  if (!overflowed)
-  {
+  if (!overflowed) {
+    //DEBUG_PRINTLN(i); // See how big the payload is (166-288)
+    
     /* Process the message */
     for (int j = 0; j < i; j++) {
       process_char(buffer[j]);
@@ -141,19 +196,5 @@ void loop()
   /* Reset */
   i = 0;
   waiting = true;
-  overflowed = false;
-
-  /* Reconnect to the network if neccessary */
-  if (failed_connections > 3) {
-    DEBUG_PRINT(F("Failed Connections - Reset"));
-
-    failed_connections = 0;
-    client.stop();
-
-    if (Ethernet.begin(mac) == 0)
-    {
-      DEBUG_PRINTLN(F("DHCP failed!"));
-      Ethernet.begin(mac, ip, gateway, gateway);
-    }
-  }
+  overflowed = false;  
 }

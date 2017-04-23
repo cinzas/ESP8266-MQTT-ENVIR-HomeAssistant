@@ -11,7 +11,7 @@
 #define IN_GENERIC_TAG 40
 
 /* Processing variables */
-int state = DEFAULT_STATE;
+byte state = DEFAULT_STATE;
 boolean in_good_tag = false;
 char desired_data[XML_BUF];
 char current_tag[XML_BUF];
@@ -126,13 +126,15 @@ void process_tag_body(char c)
         valueSum[sensor] = valueSum[sensor] + powerch1 + powerch2 + powerch3;
         valueCount[sensor] = valueCount[sensor] + 1;
 
-        DEBUG_PRINT(F("Sensor:"));
-        DEBUG_PRINT(sensor);
-        DEBUG_PRINT(F("="));
-        DEBUG_PRINT(valueSum[sensor]);
-        DEBUG_PRINT(F(" ("));
-        DEBUG_PRINT(valueCount[sensor]);
-        DEBUG_PRINTLN(F(")"));
+        DEBUG_PRINT(F("."));
+        
+        //DEBUG_PRINT(F("Sensor:"));
+        //DEBUG_PRINT(sensor);
+        //DEBUG_PRINT(F("="));
+        //DEBUG_PRINT(valueSum[sensor]);
+        //DEBUG_PRINT(F(" ("));
+        //DEBUG_PRINT(valueCount[sensor]);
+        //DEBUG_PRINTLN(F(")"));
 
         /* Reset for next run */
         sensor = 99;
