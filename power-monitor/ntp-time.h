@@ -7,7 +7,6 @@ void sendNTPpacket()
   // set all bytes in the buffer to 0
   memset(packetBuffer, 0, NTP_PACKET_SIZE); 
   // Initialize values needed to form NTP request
-  // (see URL above for details on the packets)
   packetBuffer[0] = 0b11100011;   // LI, Version, Mode
   packetBuffer[1] = 0;     // Stratum, or type of clock
   packetBuffer[2] = 6;     // Polling Interval
@@ -25,7 +24,6 @@ void sendNTPpacket()
   Udp.endPacket(); 
 }
 
-
 unsigned long getNtpTime()
 {
     while(Udp.parsePacket()) Udp.flush(); // make sure udp buffer is empty
@@ -42,7 +40,6 @@ unsigned long getNtpTime()
         // this is NTP time (seconds since Jan 1 1900):
         unsigned long secsSince1900 = highWord << 16 | lowWord;
         unsigned long now = secsSince1900 - 2208988800UL;  // GMT
-
         
 //        // DST == DaySavingTime == Zomertijd
 //        boolean dst = false;

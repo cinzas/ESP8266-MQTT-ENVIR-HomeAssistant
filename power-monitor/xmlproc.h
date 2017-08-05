@@ -52,8 +52,7 @@ void process_start_tag(char c)
       /* Add the character to the current tag name */
       if (strlen(current_tag) < XML_BUF) {
         strncat(current_tag, &c, 1);
-      }
-      else {
+      } else {
         // Tag buffer overflow!
       }
   }
@@ -77,20 +76,17 @@ void process_tag_body(char c)
   {
     case '<':
       /* Data reporting, the good bit */
-      if (in_good_tag)
-      {
+      if (in_good_tag) {
         /* Reset for the next run */
         in_good_tag = false;
 
         /* Temperature mode */
-        if (desired_tag == temp_tag)
-        {
+        if (desired_tag == temp_tag) {
           temp = atof(desired_data);
           desired_tag = sensor_tag;
         }
         /* Sensor mode */
-        else if (desired_tag == sensor_tag)
-        {
+        else if (desired_tag == sensor_tag) {
           sensor = atoi(desired_data);
           desired_tag = power_tag;
           powerch1 = 0;
@@ -98,18 +94,15 @@ void process_tag_body(char c)
           powerch3 = 0;
           currentchan = 1;
         }
-        else if ((desired_tag == power_tag) && (currentchan == 1))
-        {
+        else if ((desired_tag == power_tag) && (currentchan == 1)) {
           powerch1 = atoi(desired_data);
           currentchan = 2;
         }
-        else if ((desired_tag == power_tag) && (currentchan == 2))
-        {
+        else if ((desired_tag == power_tag) && (currentchan == 2)) {
           powerch2 = atoi(desired_data);
           currentchan = 3;
         }
-        else if ((desired_tag == power_tag) && (currentchan == 3))
-        {
+        else if ((desired_tag == power_tag) && (currentchan == 3)) {
           powerch3 = atoi(desired_data);
           currentchan = 4;
         }
@@ -125,7 +118,11 @@ void process_tag_body(char c)
       {
         valueSum[sensor] = valueSum[sensor] + powerch1 + powerch2 + powerch3;
         valueCount[sensor] = valueCount[sensor] + 1;
-
+        
+        //#if MQTT_ENABLE == 1
+		//send_to_mqtt()
+        //#endif
+        
         DEBUG_PRINT(F("."));
         
         //DEBUG_PRINT(F("Sensor:"));
@@ -143,12 +140,9 @@ void process_tag_body(char c)
       break;
 
     default:
-      if (in_good_tag)
-      {
+      if (in_good_tag) {
         strncat(desired_data, &c, 1);
-      }
-      else
-      {
+      } else {
         break;
       }
   }
@@ -156,16 +150,12 @@ void process_tag_body(char c)
 
 void process_generic_tag(char c)
 {
-  if (c == '<')
-  {
+  if (c == '<') {
     return;
   }
-  if (c == '/')
-  {
+  if (c == '/') {
     change_state(IN_END_TAG);
-  }
-  else
-  {
+  } else {
     change_state(IN_START_TAG);
     process_start_tag(c);
   }

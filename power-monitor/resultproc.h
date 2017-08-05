@@ -18,33 +18,52 @@ unsigned long last_connect;
 
 /* --------------------------- */
 
-
-void checkResponse(EthernetClient client)
-{
-  if (client.connected()) {
-    failed_connections = 0;
-    
-    //Read response
-    byte maxReads = 20;   //Seconds
-    while ((maxReads-- > 0) && client.connected()) {
-      delay(500);
-      while (client.available()) {
-        DEBUG_PRINT((char)client.read());
-      }
-    }
+void reconnect_mqtt() {
+  while (!mqtt.connected()) {
+  //if (!mqtt.connected()) {
     DEBUG_PRINTLN();
-    delay(10);
-    client.flush();
-    delay(10);
-  }
-  else
-  {
-    failed_connections++;
-    dateFailed = now();
-    DEBUG_PRINTLN(F("ERROR: Failed Connected"));
+    DEBUG_PRINT(F("MQTT connecting..."));
+    // if (mqtt.connect("EnergyProxy")) {
+    if (mqtt.connect("EnergyProxy", MQTT_USER, MQTT_PASSWORD)) {
+      DEBUG_PRINTLN(F("connected"));
+    } else {
+      DEBUG_PRINTLN();
+      DEBUG_PRINT(F("failed, rc="));
+      DEBUG_PRINT(mqtt.state());
+      DEBUG_PRINTLN(F(" try again in 3 seconds"));
+      delay(3000);
+    }
   }
 }
 
+void send_to_mqtt()
+{
+  if (!mqtt.connected()) {
+    reconnect_mqtt();
+  }
+  
+  DEBUG_PRINTLN();
+  DEBUG_PRINT(F("[MQTT] PUSH TO MQTT "));
+  
+  /* Set the tempature */
+  char fsensor[15];
+  snprintf(fsensor, sizeof fsensor, "%s%d", MQTT_TOPIC, 0);
+  snprintf(fdata, sizeof fdata, "%d.%02d", (int)temp, (int)(temp * 100) % 100);
+  mqtt.publish(fsensor, fdata);
+  DEBUG_PRINT(F("+"));
+  
+  /* Send the channels that have data in them */
+  for (int i2 = 0; i2 < 10; i2++) {
+    if (valueCount[i2] > 0) {      
+      snprintf(fsensor, sizeof fsensor, "%s%d", MQTT_TOPIC, (i2 + 1));
+      snprintf(fdata, sizeof fdata, "%d", (int)(valueSum[i2] / valueCount[i2]));
+      mqtt.publish(fsensor, fdata);
+	  DEBUG_PRINT(F("+"));
+    }
+  }
+  
+  DEBUG_PRINTLN(F(" OK"));
+}
 
 void send_to_xively()
 {
@@ -55,96 +74,71 @@ void send_to_xively()
   for (int i2 = 0; i2 < 10; i2++) {
     if (valueCount[i2] > 0) {
       int buflen = strlen(fdata);
-      snprintf(fdata + buflen, (sizeof fdata) - buflen, "%d,%d\n%", (i2 + 1), (valueSum[i2] / valueCount[i2]));
+      snprintf(fdata + buflen, (sizeof fdata) - buflen, "%d,%d\n", (i2 + 1), (valueSum[i2] / valueCount[i2]));
     }
   }
 
-  DEBUG_PRINTLN(F(""));
-  DEBUG_PRINTLN(F("Submitting data:"));
-  DEBUG_PRINTLN(fdata);
-
-  int data_length = strlen(fdata);
-
-  if (client.connect(XIVELY_URL, 80))
-  {
-    //https://www.arduino.cc/en/Tutorial/GSMExamplesXivelyClient
-    client.print(F("PUT /v2/feeds/"));
-    client.print(XIVELY_FEEDID);
-    client.println(F(".csv HTTP/1.1"));
-    client.print(F("Host: "));
-    client.println(XIVELY_URL);
-    client.print(F("X-ApiKey: "));
-    client.println(XIVELY_KEY);
-    /*client.print(F("User-Agent: "));
-      client.println(USERAGENT);*/
-    client.print(F("Content-Length: "));
-    client.println(data_length);
-    client.println(F("Connection: close"));
-    client.println();
-    client.println(fdata);
-
-    checkResponse(client);
-  }
-  else
-  {
+  DEBUG_PRINTLN();
+  DEBUG_PRINT(F("[HTTP] PUSH TO XIVELY "));
+  
+  http.begin("http://api.xively.com/v2/feeds/"+String(XIVELY_FEEDID)+".csv");
+  http.addHeader(F("Host"), F("pvoutput.org"));
+  http.addHeader(F("X-ApiKey"), XIVELY_KEY);
+  int resultCode = http.sendRequest("PUT", (uint8_t *)fdata, strlen(fdata));
+  if(resultCode == HTTP_CODE_OK) {
+    DEBUG_PRINTLN(F("OK"));
+  } else {
     failed_connections++;
     dateFailed = now();
-    DEBUG_PRINTLN(F("ERROR: Failed Connect"));
+    DEBUG_PRINTLN(F("FAILED"));
+    DEBUG_PRINTLN(http.errorToString(resultCode).c_str());
   }
-  client.stop();
+  http.end();
+
+  DEBUG_PRINTLN(F("Data:"));
+  DEBUG_PRINTLN(fdata);
 }
 
 void send_to_pvoutput()
 {
   //https://www.pvoutput.org/help.html#api-addstatus
-  
-  //Parameter  Field Required  Format  Unit  Example Since 
-  //d Date  Yes yyyymmdd  date  20100830  r1  
-  //t Time  Yes hh:mm time  14:12 r1  
-  //v1  Energy Generation No1 number  watt hours  10000 r1  
-  //v2  Power Generation  No  number  watts 2000  r1  
-  //v3  Energy Consumption  No  number  watt hours  10000 r1  
-  //v4  Power Consumption No  number  watts 2000  r1  
-  //v5  Temperature No  decimal celsius 23.4  r2  
-  //v6  Voltage No  decimal volts 210.7 r2  
-  //c1  Cumulative Flag No  number  - 1 r1  
-  //n Net Flag  No  number  - 1 r2  
+  //Parameter Field       Required  Format  Unit        Example   Since
+  //d   Date                Yes   yyyymmdd  date        20100830  r1
+  //t   Time                Yes   hh:mm     time        14:12     r1
+  //v1  Energy Generation   No    number    watt hours  10000     r1
+  //v2  Power Generation    No    number    watts       2000      r1
+  //v3  Energy Consumption  No    number    watt hours  10000     r1
+  //v4  Power Consumption   No    number    watts       2000      r1
+  //v5  Temperature         No    decimal   celsius     23.4      r2
+  //v6  Voltage             No    decimal   volts       210.7     r2
+  //c1  Cumulative Flag     No    number    -           1         r1
+  //n   Net Flag            No    number    -           1         r2
 
   snprintf(fdata, sizeof fdata, "d=%04d%02d%02d&t=%02d:%02d", year(),month(),day(),hour(),minute()); // Date and Time
   int buflen = strlen(fdata);
-  snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v2=%d%", (valueSum[PVOUTPUT_SOLARCHANNEL] / valueCount[PVOUTPUT_SOLARCHANNEL])); // Power Generation
+  snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v2=%d", (valueSum[PVOUTPUT_SOLARCHANNEL] / valueCount[PVOUTPUT_SOLARCHANNEL])); // Power Generation
   buflen = strlen(fdata);
-  snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v4=%d%", (valueSum[0] / valueCount[0])); // Power Consumption
+  snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v4=%d", (valueSum[0] / valueCount[0])); // Power Consumption
   buflen = strlen(fdata);
   snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v5=%d.%02d", (int)temp, (int)(temp * 100) % 100); // Temperature
 
-  DEBUG_PRINTLN(F(""));
-  DEBUG_PRINTLN(F("Submitting data:"));
-  DEBUG_PRINTLN(fdata);
-
-  if (client.connect(PVOUTPUT_URL, 80))
-  {
-    client.print(F("POST /service/r2/addstatus.jsp?"));
-    client.print(fdata);
-    client.println(F(" HTTP/1.1"));
-    client.print(F("Host: "));
-    client.println(PVOUTPUT_URL);
-    client.print(F("X-Pvoutput-Apikey: "));
-    client.println(PVOUTPUT_KEY);
-    client.print(F("X-Pvoutput-SystemId: "));
-    client.println(PVOUTPUT_SYSTEMID);
-    client.println(F("Connection: close"));
-    client.println();
-
-    checkResponse(client);
-  }
-  else
-  {
+  DEBUG_PRINTLN();
+  DEBUG_PRINT(F("[HTTP] PUSH TO PVOUTPUT "));
+  
+  http.begin("http://pvoutput.org/service/r2/addstatus.jsp?"+String(fdata)+"&key="+PVOUTPUT_KEY+"&sid="+PVOUTPUT_SYSTEMID); 
+  int resultCode = http.GET();
+  if(resultCode == HTTP_CODE_OK) {
+    DEBUG_PRINTLN(F("OK"));
+  } else {
     failed_connections++;
     dateFailed = now();
-    DEBUG_PRINTLN(F("ERROR: Failed Connect"));
+    DEBUG_PRINTLN(F("FAILED"));
+    DEBUG_PRINTLN(http.errorToString(resultCode).c_str());
   }
-  client.stop();    
+  http.end();
+
+  DEBUG_PRINTLN(F("Data:"));
+  DEBUG_PRINTLN(fdata);
 }
 
 void send_to_thingspeak()
@@ -160,35 +154,25 @@ void send_to_thingspeak()
     }
   }
 
-  DEBUG_PRINTLN(F(""));
-  DEBUG_PRINTLN(F("Submitting data:"));
-  DEBUG_PRINTLN(fdata);
-
-  int data_length = strlen(fdata);
-
-  if (client.connect(THINGSPEAK_URL, 80))
-  {
-    client.println(F("POST /update HTTP/1.1"));
-    client.print(F("Host: "));
-    client.println(THINGSPEAK_URL);
-    client.println(F("Connection: close"));
-    client.print(F("X-THINGSPEAKAPIKEY: "));
-    client.println(THINGSPEAK_KEY);
-    client.println(F("Content-Type: application/x-www-form-urlencoded"));
-    client.print(F("Content-Length: "));
-    client.println(data_length);
-    client.println();
-    client.println(fdata);
-
-    checkResponse(client);
-  }
-  else
-  {
+  DEBUG_PRINTLN();
+  DEBUG_PRINT(F("[HTTP] PUSH TO THINKSPEAK "));
+  
+  http.begin("http://api.thingspeak.com/update");
+  http.addHeader(F("Host"), F("api.thingspeak.com"));
+  http.addHeader(F("X-THINGSPEAKAPIKEY"), THINGSPEAK_KEY);
+  int resultCode = http.POST((uint8_t *)fdata, strlen(fdata));
+  if(resultCode == HTTP_CODE_OK) {
+    DEBUG_PRINTLN(F("OK"));
+  } else {
     failed_connections++;
     dateFailed = now();
-    DEBUG_PRINTLN(F("ERROR: Failed Connect"));
+    DEBUG_PRINTLN(F("FAILED"));
+    DEBUG_PRINTLN(http.errorToString(resultCode).c_str());
   }
-  client.stop();    
+  http.end();
+
+  DEBUG_PRINT(F("Data:"));
+  DEBUG_PRINTLN(fdata);
 }
 
 
@@ -198,25 +182,31 @@ void process_result()
 
   if ((millis() - last_connect) > UPDATE_INTERVAL) {
 
-    if (strlen(THINGSPEAK_KEY) > 0) {
-      send_to_thingspeak();
-    }
-
-    if (strlen(XIVELY_KEY) > 0) {
-      send_to_xively();
-    }
-
-    if (strlen(PVOUTPUT_KEY) > 0) {
-      send_to_pvoutput();
-    }
+    #if MQTT_ENABLE == 1
+    send_to_mqtt();
+    #endif
     
+    #if THINGSPEAK_ENABLE == 1
+    send_to_thingspeak();
+    #endif
+
+    #if XIVELY_ENABLE == 1
+    send_to_xively();
+    #endif
+    
+    #if PVOUTPUT_ENABLE == 1
+    send_to_pvoutput();
+    #endif
+
     /* Reset for next run */
     for (int i3 = 0; i3 < 10; i3++) {
       valueSum[i3] = 0;
       valueCount[i3] = 0;
     }
 
-    Ethernet.maintain(); /* Keep DHCP lease active */
+#ifndef _ESP8266
+    NETWORK.maintain(); /* Keep DHCP lease active */
+#endif
 
     last_connect = millis();
   }

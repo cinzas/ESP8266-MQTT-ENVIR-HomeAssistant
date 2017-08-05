@@ -1,27 +1,44 @@
-#define VERSION "v6.1 - EnergyProxy - http://dotnetdan.info"
-
-#include <SPI.h> //http://playground.arduino.cc/Code/Spi
-#include <Ethernet.h>
-#include <EthernetUdp.h>
-#include <TimeLib.h> //http://playground.arduino.cc/Code/time
-
-#include "auth.h"
-
-//#define _BRIDGE
-#define _DEBUG // uncomment this line for extra debug information
+// ------------------------------
+// ---- all config in auth.h ----
+// ------------------------------
+#define VERSION F("v6.6 - EnergyProxy - https://github.com/DotNetDann - http://dotnetdan.info")
 
 /* Initialise serial appropriately */
 #define CC_BAUD 57600
 
-#ifdef _BRIDGE
-#define CC_SERIAL Serial
-#define ETH_PIN 7
-#else
-#include <SoftwareSerial.h>
-#define SERIAL_RX 2
-#define SERIAL_TX 3
-SoftwareSerial ccSerial(SERIAL_RX, SERIAL_TX);
-#define CC_SERIAL ccSerial
+#include <PubSubClient.h>
+#include <SPI.h> //http://playground.arduino.cc/Code/Spi
+#include <TimeLib.h> //http://playground.arduino.cc/Code/time - https://github.com/PaulStoffregen/Time
+#include "auth.h"
+
+#ifdef _ESP8266
+  #include <ESP8266WiFi.h>
+  #include <ESP8266WebServer.h>
+  #include <ESP8266HTTPClient.h>
+  #include <WiFiServer.h>
+  #include <WiFiClient.h>
+  #include <WiFiUdp.h>
+  #include <SoftwareSerial.h> //EspSoftwareSerial
+  SoftwareSerial ccSerial(13, 15, false, 256); // D7 and D8
+  #define CC_SERIAL ccSerial
+  #define NETWORK WiFi
+#endif
+#ifdef _CCBRIDGE
+  #include <Ethernet.h>
+  #include <EthernetUdp.h>
+  #define CC_SERIAL Serial
+  #define ETH_PIN 7
+  #define NETWORK Ethernet
+#endif
+#ifdef _ETHERTEN
+  #include <Ethernet.h>
+  #include <EthernetUdp.h>
+  #include <SoftwareSerial.h>
+  #define SERIAL_RX 2
+  #define SERIAL_TX 3
+  SoftwareSerial ccSerial(SERIAL_RX, SERIAL_TX);
+  #define CC_SERIAL ccSerial
+  #define NETWORK Ethernet
 #endif
 
 /* The size of the buffer that messages are read onto */
@@ -40,12 +57,23 @@ time_t dateStarted;
 time_t dateFailed;
 
 /* Networking details (add your ethernet shield's MAC address) */
-byte mac[] = {0x90, 0xA2, 0xDA, 0x02, 0x03, 0xC5};
-byte ip[] = {192, 168, 30, 200};
-byte gateway[] = {192, 168, 30, 1};
-EthernetClient client;
-EthernetServer server(80);              // the web server is used to serve status calls
-EthernetUDP Udp;
+
+#ifdef _ESP8266
+  WiFiClient client[3];
+  WiFiClient webClient;
+  //WiFiServer server(80);
+  ESP8266WebServer server(80);
+  WiFiUDP Udp;
+  HTTPClient http;
+#else
+  byte mac[] = {0x90, 0xA2, 0xDA, 0x02, 0x03, 0xC5};
+  byte ip[] = {192, 168, 30, 200};
+  byte gateway[] = {192, 168, 30, 1};
+  EthernetClient client[3];
+  EthernetServer server(80);              // the web server is used to serve status calls
+  EthernetUDP Udp;
+  HttpClient http;
+#endif
 
 /* Message buffer & its counter */
 char buffer[BUFFER_SIZE];
@@ -61,16 +89,18 @@ boolean overflowed = false;
 /* Watch the connection quality */
 int failed_connections = 0;
 
+PubSubClient mqtt(client[2]);
+
 /* ~~~~~~~~~~~~ */
 /* Program Body */
 /* ~~~~~~~~~~~~ */
 
 #ifdef _DEBUG
-#define DEBUG_PRINT(x) Serial.print(x)
-#define DEBUG_PRINTLN(x) Serial.println(x)
+  #define DEBUG_PRINT(x) Serial.print(x)
+  #define DEBUG_PRINTLN(x) Serial.println(x)
 #else
-#define DEBUG_PRINT(x)
-#define DEBUG_PRINTLN(x)
+  #define DEBUG_PRINT(x)
+  #define DEBUG_PRINTLN(x)
 #endif
 
 /* All the real work is in the xml processor */
@@ -81,6 +111,9 @@ int failed_connections = 0;
 
 void setup()
 {
+  pinMode(LED_BUILTIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
+  digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on
+
   /* Initialise Arduino to CurrentCost meter serial */
   CC_SERIAL.begin(CC_BAUD);
 
@@ -96,25 +129,45 @@ void setup()
 #endif
 
   /* Connect to the network */
-  if (Ethernet.begin(mac) == 0)
+#ifdef _ESP8266
+  NETWORK.begin(WIFI_SSID, WIFI_PASSWORD);
+  DEBUG_PRINT(F("Connecting to "));
+  DEBUG_PRINTLN(WIFI_SSID);
+  
+  while (NETWORK.status() != WL_CONNECTED) delay(500);
+#else
+  if (NETWORK.begin(mac) == 0)
   {
     DEBUG_PRINTLN(F("DHCP failed!"));
-    Ethernet.begin(mac, ip, gateway, gateway);
+    NETWORK.begin(mac, ip, gateway, gateway);
   }
 
-  Ethernet.maintain();
+  NETWORK.maintain();
+#endif
+
   DEBUG_PRINT(F("Local IP: "));
-  DEBUG_PRINTLN(Ethernet.localIP());
-  
+  DEBUG_PRINTLN(NETWORK.localIP());
+    
   // initialize time server
   Udp.begin(8888);
   DEBUG_PRINTLN(F("Setting time using NTP"));
   while(!UpdateTime()); // wait until time is set
-  DEBUG_PRINTLN(F("Time is set"));
+  DEBUG_PRINT(F("Time is "));
+  SetDateTime(now());
+  DEBUG_PRINTLN(fdata);
+  
+  #if MQTT_ENABLE == 1
+  mqtt.setServer(MQTT_SERVER, 1883);
+  #endif
+
+  server.on("/", ServeWebClients);
+  server.begin();
   
   lastHour = hour();
   dateStarted = now();
   dateFailed = now();
+
+  digitalWrite(LED_BUILTIN, HIGH);  // Turn the LED off
 }
 
 
@@ -127,12 +180,12 @@ void loop()
   if (failed_connections > 3) {
     DEBUG_PRINT(F("Failed Connections - Reset"));
     failed_connections = 0;
-    client.stop();
+    client[0].stop();
 
-    if (Ethernet.begin(mac) == 0) {
-      DEBUG_PRINTLN(F("DHCP failed!"));
-      Ethernet.begin(mac, ip, gateway, gateway);
-    }
+    //if (network.begin(mac) == 0) {
+    //  DEBUG_PRINTLN(F("DHCP failed!"));
+    //  network.begin(mac, ip, gateway, gateway);
+    //}
   }
 
   /* Update local time/date */
@@ -144,10 +197,12 @@ void loop()
   }
 
   /* Server Webpage */
-  ServeWebClients();
+  //ServeWebClients();
+  server.handleClient();
+
+  digitalWrite(LED_BUILTIN, HIGH);  // Turn the LED off
   delay(50);
 }
-
 
 void ReadMeter()
 {
@@ -156,12 +211,11 @@ void ReadMeter()
      in several parts separated by small time intervals.
      Wait for the whole message to arrive before processing
   */
-  while ((millis() - t_lastread < MSG_DELAY || waiting) && !overflowed)
-  {
-    if (CC_SERIAL.available())
-    {
-      while (CC_SERIAL.available())
-      {
+  while ((millis() - t_lastread < MSG_DELAY || waiting) && !overflowed) {
+    if (CC_SERIAL.available()) {
+      digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on
+      
+      while (CC_SERIAL.available()) {
         if (i == BUFFER_SIZE) {
           overflowed = true;
           DEBUG_PRINT(F("x"));
@@ -170,6 +224,7 @@ void ReadMeter()
 
         buffer[i] = (char)CC_SERIAL.read();
         i++;
+        yield();
       }
 
       if (waiting) {
@@ -178,6 +233,8 @@ void ReadMeter()
 
       t_lastread = millis();
     }
+
+    yield();
   }
 
   CC_SERIAL.flush(); // Clear any remaining serial?
