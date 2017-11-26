@@ -18,6 +18,7 @@
   #include <WiFiServer.h>
   #include <WiFiClient.h>
   #include <WiFiUdp.h>
+  #include <ArduinoOTA.h>
   #include <SoftwareSerial.h> //EspSoftwareSerial
   SoftwareSerial ccSerial(13, 15, false, 256); // D7 and D8
   #define CC_SERIAL ccSerial
@@ -82,8 +83,6 @@ int i = 0;
 /* The time of the last read from the serial */
 unsigned long t_lastread = 0;
 
-/* Are we waiting for a message? Did a buffer overflow? */
-boolean waiting = true;
 boolean overflowed = false;
 
 /* Watch the connection quality */
@@ -134,7 +133,35 @@ void setup()
   DEBUG_PRINT(F("Connecting to "));
   DEBUG_PRINTLN(WIFI_SSID);
   
-  while (NETWORK.status() != WL_CONNECTED) delay(500);
+  while (NETWORK.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  //OTA SETUP
+  ArduinoOTA.setPort(OTAport); // Hostname defaults to esp8266-[ChipID]
+  ArduinoOTA.setHostname("EnviR");
+  ArduinoOTA.setPassword((const char *)OTApassword); // No authentication by default
+
+  ArduinoOTA.onStart([]() {
+    Serial.println("Starting");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+  ArduinoOTA.begin();
+ 
 #else
   if (NETWORK.begin(mac) == 0)
   {
@@ -211,7 +238,8 @@ void ReadMeter()
      in several parts separated by small time intervals.
      Wait for the whole message to arrive before processing
   */
-  while ((millis() - t_lastread < MSG_DELAY || waiting) && !overflowed) {
+  t_lastread = millis();
+  while ((millis() - t_lastread < MSG_DELAY) && !overflowed) {
     if (CC_SERIAL.available()) {
       digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on
       
@@ -226,11 +254,7 @@ void ReadMeter()
         i++;
         yield();
       }
-
-      if (waiting) {
-        waiting = false;
-      }
-
+      
       t_lastread = millis();
     }
 
@@ -252,6 +276,5 @@ void ReadMeter()
 
   /* Reset */
   i = 0;
-  waiting = true;
   overflowed = false;  
 }

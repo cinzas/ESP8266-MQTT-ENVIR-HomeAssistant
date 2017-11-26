@@ -18,6 +18,8 @@
 #define WIFI_SSID "ssid"
 #define WIFI_PASSWORD "password"
 
+#define OTApassword "ota password" //the password you will need to enter to upload remotely via the ArduinoIDE
+#define OTAport 8266
 
 #define MQTT_ENABLE 0
 #define MQTT_SERVER "mqtt server ip"
