@@ -19,8 +19,8 @@ unsigned long last_connect;
 /* --------------------------- */
 
 void reconnect_mqtt() {
-  while (!mqtt.connected()) {
-  //if (!mqtt.connected()) {
+  //while (!mqtt.connected()) {
+  if (!mqtt.connected()) {
     DEBUG_PRINTLN();
     DEBUG_PRINT(F("MQTT connecting..."));
     // if (mqtt.connect("EnergyProxy")) {

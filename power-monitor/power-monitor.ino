@@ -1,7 +1,7 @@
 // ------------------------------
 // ---- all config in auth.h ----
 // ------------------------------
-#define VERSION F("v6.6 - EnergyProxy - https://github.com/DotNetDann - http://dotnetdan.info")
+#define VERSION F("v6.7 - EnergyProxy - https://github.com/DotNetDann - http://dotnetdan.info")
 
 /* Initialise serial appropriately */
 #define CC_BAUD 57600
