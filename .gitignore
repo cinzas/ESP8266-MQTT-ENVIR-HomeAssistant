@@ -1,12 +1,2 @@
 # Personal details
 power-monitor/auth.h
-
-# Binaries, etc
-junk/*
-.build/*
-
-# Test program binaries
-serial-test/.build/*
-
-# Packaged site stuff
-web/*.zip

@@ -108,10 +108,9 @@ PubSubClient mqtt(client[2]);
 #include "ntp-time.h"
 #include "web-client.h"
 
-void setup()
-{
-  pinMode(LED_BUILTIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
-  digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on
+void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);       // Initialize the LED_BUILTIN pin as an output (So it doesnt float as a LED is on this pin)
+  digitalWrite(LED_BUILTIN, LOW);     // Turn the status LED on
 
   /* Initialise Arduino to CurrentCost meter serial */
   CC_SERIAL.begin(CC_BAUD);
@@ -139,8 +138,8 @@ void setup()
   }
 
   //OTA SETUP
-  ArduinoOTA.setPort(OTAport); // Hostname defaults to esp8266-[ChipID]
-  ArduinoOTA.setHostname("EnviR");
+  ArduinoOTA.setPort(OTAport);
+  ArduinoOTA.setHostname("EnviR"); // Hostname defaults to esp8266-[ChipID]
   ArduinoOTA.setPassword((const char *)OTApassword); // No authentication by default
 
   ArduinoOTA.onStart([]() {

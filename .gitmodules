@@ -1,6 +1,0 @@
-[submodule "web/raphael"]
-	path = web/raphael
-	url = https://github.com/DmitryBaranovskiy/raphael/
-[submodule "web/raphy-charts"]
-	path = web/raphy-charts
-	url = https://github.com/jcarver989/raphy-charts

@@ -1,4 +1,4 @@
-Arduino Power Monitor
+# ESP MQTT EnviR PowerMonitor
 =====================
 
 This project consists of firmware to ease the monitoring of household electricity usage.
