@@ -107,14 +107,14 @@ void ServeWebClients()
   inString += F("</label></td></tr>");
   inString += F("<tr><td><b>Topic:</b></td><td><label id='lbl_rssi'>");
   inString += MQTT_TOPIC;
-  inString += F("'></td></tr>");
+  inString += F("</label></td></tr>");
 
   inString += F("<tr><td colspan='2'>&nbsp;</td></tr>");
   inString += F("<tr><td colspan='2'><input type='checkbox' id='cb2' ");
   #if PVOUTPUT_ENABLE == 1
     inString += F("checked");
   #endif
-  inString += F(" disabled><label for='cb2'>ThingSpeak Enabled</label></td></tr>");
+  inString += F(" disabled><label for='cb2'>PVOutput Enabled</label></td></tr>");
   inString += F("<tr><td><b>System Id:</b></td><td><label id='lbl_rssi'>");
   inString += PVOUTPUT_SYSTEMID;
   inString += F("</label></td></tr>");

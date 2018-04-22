@@ -1,7 +1,7 @@
 // ------------------------------
 // ---- all config in auth.h ----
 // ------------------------------
-#define VERSION F("v6.7 - EnergyProxy - https://github.com/DotNetDann - http://dotnetdan.info")
+#define VERSION F("v6.8 - EnergyProxy - https://github.com/DotNetDann - http://dotnetdan.info")
 
 /* Initialise serial appropriately */
 #define CC_BAUD 57600
@@ -222,9 +222,9 @@ void loop()
     }
   }
 
-  /* Server Webpage */
-  //ServeWebClients();
-  server.handleClient();
+  ArduinoOTA.handle(); // Check OTA Firmware Updates
+  
+  server.handleClient(); // Check Web page requests
 
   digitalWrite(LED_BUILTIN, HIGH);  // Turn the LED off
   delay(50);
@@ -257,6 +257,7 @@ void ReadMeter()
       t_lastread = millis();
     }
 
+    delay(10);
     yield();
   }
 
