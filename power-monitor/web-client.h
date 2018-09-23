@@ -35,9 +35,9 @@ void ServeWebClients()
       inString += i9;
 
       if (i9 == 0) {
-        inString += F("<small>(Consumption)</small>");
+        inString += F(" <small>(Consumption)</small>");
       } else if (i9 == PVOUTPUT_SOLARCHANNEL) {
-        inString += F("<small>(Generation)</small>");
+        inString += F(" <small>(Generation)</small>");
       }
 
       inString += F("</td><td>");
@@ -66,6 +66,9 @@ void ServeWebClients()
   SetDateTime(now());
   inString += fdata;
   inString += F("</td></tr>");
+  inString += F("<tr><td><b>Free Heap:</b></td><td>");
+  inString += ESP.getFreeHeap();
+  inString += F("</td></tr>");  
   inString += F("</table><br />");
   inString += F("</div>");
 

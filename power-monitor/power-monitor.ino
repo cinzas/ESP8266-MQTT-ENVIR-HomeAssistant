@@ -6,7 +6,7 @@
 /* Initialise serial appropriately */
 #define CC_BAUD 57600
 
-#include <PubSubClient.h>
+#include <PubSubClient.h> //https://pubsubclient.knolleary.net/
 #include <SPI.h> //http://playground.arduino.cc/Code/Spi
 #include <TimeLib.h> //http://playground.arduino.cc/Code/time - https://github.com/PaulStoffregen/Time
 #include "auth.h"
@@ -206,6 +206,7 @@ void loop()
   if (failed_connections > 3) {
     DEBUG_PRINT(F("Failed Connections - Reset"));
     failed_connections = 0;
+    client[0].flush();
     client[0].stop();
 
     //if (network.begin(mac) == 0) {
@@ -226,7 +227,10 @@ void loop()
   
   server.handleClient(); // Check Web page requests
 
+  #ifdef _STATUSLED
   digitalWrite(LED_BUILTIN, HIGH);  // Turn the LED off
+  #endif
+  
   delay(50);
 }
 
@@ -240,7 +244,10 @@ void ReadMeter()
   t_lastread = millis();
   while ((millis() - t_lastread < MSG_DELAY) && !overflowed) {
     if (CC_SERIAL.available()) {
+    
+      #ifdef _STATUSLED
       digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on
+      #endif
       
       while (CC_SERIAL.available()) {
         if (i == BUFFER_SIZE) {

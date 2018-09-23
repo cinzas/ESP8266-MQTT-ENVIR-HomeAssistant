@@ -6,7 +6,8 @@
 //#define _CCBRIDGE
 #define _ESP8266 // Must not define _DEBUG
 //#define _ETHERTEN
-#define _DEBUG // uncomment this line for extra debug information
+//#define _DEBUG // uncomment this line for extra debug information
+#define _STATUSLED // This will blink when recieving data (once every 6 seconds for each device)
 
 
 //#define UPDATE_INTERVAL     60000   // 1 min - interval used to update data, in milliseconds
@@ -28,17 +29,14 @@
 #define MQTT_TOPIC "envir/power/" // MQTT topic where values are published
 
 #define PVOUTPUT_ENABLE 0
-//#define PVOUTPUT_URL "pvoutput.org"
 #define PVOUTPUT_SYSTEMID "your system id"
 #define PVOUTPUT_KEY ""
 #define PVOUTPUT_SOLARCHANNEL 1
 
 #define THINGSPEAK_ENABLE 0
-//#define THINGSPEAK_URL "api.thingspeak.com"
 #define THINGSPEAK_KEY ""
 
 #define XIVELY_ENABLE 0
-//#define XIVELY_URL "api.xively.com"
 #define XIVELY_FEEDID "your feed id"
 #define XIVELY_KEY ""
 
