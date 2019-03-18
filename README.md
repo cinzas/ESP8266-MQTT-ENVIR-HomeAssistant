@@ -18,6 +18,14 @@ This is now used to push data to Home Assistant via MQTT (https://home-assistant
 
 ![alt text](https://github.com/DotNetDann/arduino-power-monitor/raw/master/EnviR_WithNodeMCU.jpg)
 
+
+## Pin outs
+GND - Blue Solid - RJ45 Pin 4
+3.3v - Green Stripe - RJ45 Pin 1
+TX - Brown - RJ45 Pin 8
+RX - Brown Stripe - RJ45 Pin 7
+
+
 ## Using a Etherten
 
 > **Note:**
