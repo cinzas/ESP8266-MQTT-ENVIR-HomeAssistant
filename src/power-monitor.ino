@@ -1,7 +1,7 @@
 // ------------------------------
 // ---- all config in auth.h ----
 // ------------------------------
-#define VERSION F("v6.8 - EnergyProxy - https://github.com/DotNetDann - http://dotnetdan.info")
+#define VERSION F("v6.9 - EnergyProxy - https://github.com/DotNetDann - http://dotnetdan.info")
 
 /* Initialise serial appropriately */
 #define CC_BAUD 57600
@@ -20,7 +20,7 @@
   #include <WiFiUdp.h>
   #include <ArduinoOTA.h>
   #include <SoftwareSerial.h> //EspSoftwareSerial
-  SoftwareSerial ccSerial(13, 15, false, 256); // D7 and D8
+  SoftwareSerial ccSerial(13, 15, false); // D7 and D8
   #define CC_SERIAL ccSerial
   #define NETWORK WiFi
 #endif

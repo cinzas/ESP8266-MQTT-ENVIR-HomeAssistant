@@ -74,7 +74,7 @@ void send_to_xively()
   for (int i2 = 0; i2 < 10; i2++) {
     if (valueCount[i2] > 0) {
       int buflen = strlen(fdata);
-      snprintf(fdata + buflen, (sizeof fdata) - buflen, "%d,%d\n", (i2 + 1), (valueSum[i2] / valueCount[i2]));
+      snprintf(fdata + buflen, (sizeof fdata) - buflen, "%d,%d\n", (i2 + 1), (int)(valueSum[i2] / valueCount[i2]));
     }
   }
 
@@ -116,9 +116,9 @@ void send_to_pvoutput()
 
   snprintf(fdata, sizeof fdata, "d=%04d%02d%02d&t=%02d:%02d", year(),month(),day(),hour(),minute()); // Date and Time
   int buflen = strlen(fdata);
-  snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v2=%d", (valueSum[PVOUTPUT_SOLARCHANNEL] / valueCount[PVOUTPUT_SOLARCHANNEL])); // Power Generation
+  snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v2=%d", (int)(valueSum[PVOUTPUT_SOLARCHANNEL] / valueCount[PVOUTPUT_SOLARCHANNEL])); // Power Generation
   buflen = strlen(fdata);
-  snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v4=%d", (valueSum[0] / valueCount[0])); // Power Consumption
+  snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v4=%d", (int)(valueSum[0] / valueCount[0])); // Power Consumption
   buflen = strlen(fdata);
   snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v5=%d.%02d", (int)temp, (int)(temp * 100) % 100); // Temperature
 
@@ -150,7 +150,7 @@ void send_to_thingspeak()
   for (int i2 = 0; i2 < 10; i2++) {
     if (valueCount[i2] > 0) {
       int buflen = strlen(fdata);
-      snprintf(fdata + buflen, (sizeof fdata) - buflen, "field%d=%d&", (i2 + 2), (valueSum[i2] / valueCount[i2]));
+      snprintf(fdata + buflen, (sizeof fdata) - buflen, "field%d=%d&", (i2 + 2), (int)(valueSum[i2] / valueCount[i2]));
     }
   }
 

@@ -104,7 +104,11 @@ void ServeWebClients()
   inString += F("</label></td></tr>");
     
   inString += F("<tr><td colspan='2'>&nbsp;</td></tr>"); 
-  inString += F("<tr><td colspan='2'><input type='checkbox' id='cb1' checked MQTT_ENABLE disabled><label for='cb1'>MQTT Enabled</label></td></tr>");
+  inString += F("<tr><td colspan='2'><input type='checkbox' id='cb1' ");
+  #if MQTT_ENABLE == 1
+    inString += F("checked");
+  #endif
+  inString += F(" disabled><label for='cb1'>MQTT Enabled</label></td></tr>");
   inString += F("<tr><td><b>Server:</b></td><td><label id='lbl_rssi'>");
   inString += MQTT_SERVER;
   inString += F("</label></td></tr>");
