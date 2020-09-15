@@ -116,8 +116,11 @@ void send_to_pvoutput()
 
   snprintf(fdata, sizeof fdata, "d=%04d%02d%02d&t=%02d:%02d", year(),month(),day(),hour(),minute()); // Date and Time
   int buflen = strlen(fdata);
-  snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v2=%d", (int)(valueSum[PVOUTPUT_SOLARCHANNEL] / valueCount[PVOUTPUT_SOLARCHANNEL])); // Power Generation
-  buflen = strlen(fdata);
+  if (valueCount[PVOUTPUT_SOLARCHANNEL] != 0) // Only send Generation if there is data!
+  {
+    snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v2=%d", (int)(valueSum[PVOUTPUT_SOLARCHANNEL] / valueCount[PVOUTPUT_SOLARCHANNEL])); // Power Generation
+    buflen = strlen(fdata);
+  }
   snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v4=%d", (int)(valueSum[0] / valueCount[0])); // Power Consumption
   buflen = strlen(fdata);
   snprintf(fdata + buflen, (sizeof fdata) - buflen, "&v5=%d.%02d", (int)temp, (int)(temp * 100) % 100); // Temperature
