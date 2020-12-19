@@ -86,3 +86,4 @@ Arduino changes, stability, mqtt, pvoutput by Daniel Hyles.
 Original which has been massively changed by Michael Sproul.
 
 Based on [original code](https://github.com/bleep1/CurrentCostToCosmViaArduino) by Brian Lee (bleep1)
+Based on [original code](https://github.com/DotNetDann/ESP8266-MQTT-ENVIR-HomeAssistant/) by DotNetDann
