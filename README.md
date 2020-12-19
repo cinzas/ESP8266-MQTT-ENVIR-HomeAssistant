@@ -7,7 +7,8 @@ A simple C program for Arduino, which parses XML data from a Current Cost power 
 
 This is now used to push data to Home Assistant via MQTT (https://home-assistant.io/)
 
-![alt text](https://github.com/DotNetDann/arduino-power-monitor/raw/master/EnviR.jpg)
+![alt text](https://github.com/cinzas/ESP8266-MQTT-ENVIR-HomeAssistant/raw/master/EnviR.jpg)
+
 
 ## Parts List
 
@@ -16,7 +17,7 @@ This is now used to push data to Home Assistant via MQTT (https://home-assistant
 3. Home made serial cable, RJ45->NodeMCU. Serial to D7 and D8 on the NodeMCU. Ensure that you send the 3.3v line to the EnviR
 4. This Git repo
 
-![alt text](https://github.com/DotNetDann/arduino-power-monitor/raw/master/EnviR_WithNodeMCU.jpg)
+![alt text](https://github.com/DotNetDann/ESP8266-MQTT-ENVIR-HomeAssistant/raw/master/EnviR_WithNodeMCU.jpg)
 
 
 ## Pin outs
@@ -80,6 +81,14 @@ If you want to test your setup without parsing the data or uploading it to Thing
 * [Some wicked CC bridge hacking](http://john.crouchley.com/blog/archives/722)
 
 ## Authors
+
+Code changed to send more information via MQTT.
+It reads every channel on every sensor, and sends it for each mqtt topic.
+Also sums the power from all channels and stores it in a MQTT topic.
+
+Have look in auth.h and update with necessary information.
+
+Summed value is uploaded to PVOUTPUT.
 
 Arduino changes, stability, mqtt, pvoutput by Daniel Hyles.
 
